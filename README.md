@@ -12,6 +12,7 @@
 
 # 更新说明：
 
+* 20200313, 添加清除月流量，固定为每月 ？号
 * 20190129, 降低CPU占用            
 * 20181221, 增加实时到三网的延迟, 鼠标移到丢包率列,tips显示        
 * 20181126, add tupd(tcp, udp, process ,thread) count for view ddcc attack    
@@ -34,17 +35,23 @@ docker run -d --restart=always --name=serverstatus -v ~/config.json:/ServerStatu
 
 【客户端】：
 ```bash
-wget --no-check-certificate -qO client-linux.py 'https://raw.githubusercontent.com/cppla/ServerStatus/master/clients/client-linux.py' && nohup python client-linux.py SERVER={$SERVER} USER={$USER} PASSWORD={$PASSWORD} >/dev/null 2>&1 &
+wget --no-check-certificate -qO client-linux.py 'https://raw.githubusercontent.com/v2xu/ServerStatus/master/clients/client-linux.py' && nohup python client-linux.py SERVER={$SERVER} USER={$USER} PASSWORD={$PASSWORD} >/dev/null 2>&1 &
 
 eg:
-wget --no-check-certificate -qO client-linux.py 'https://raw.githubusercontent.com/cppla/ServerStatus/master/clients/client-linux.py' && nohup python client-linux.py SERVER=45.79.67.132 USER=s04  >/dev/null 2>&1 &
+wget --no-check-certificate -qO client-linux.py 'https://raw.githubusercontent.com/v2xu/ServerStatus/master/clients/client-linux.py' && nohup python client-linux.py SERVER=45.79.67.132 USER=s04  >/dev/null 2>&1 &
 ```
 
 # 手动安装教程：     
-   
+
+【程序依赖】（每月清除流量需要组件）
+```
+apt install python-pip
+pip install apscheduler
+```
+
 【克隆代码】:
 ```
-git clone https://github.com/cppla/ServerStatus.git
+git clone https://github.com/v2xu/ServerStatus.git
 ```
 
 【服务端配置】（服务端程序在ServerStatus/web下）:  
@@ -90,7 +97,7 @@ web-dir参数为上一步设置的网站根目录，务必修改成自己网站�
 客户端有两个版本，client-linux为普通linux，client-psutil为跨平台版，普通版不成功，换成跨平台版即可。        
 
 一、client-linux版配置：       
-1、vim client-linux.py, 修改SERVER地址，username帐号， password密码        
+1、vim client-linux.py, 修改SERVER地址，username帐号， password密码，找到 sched.add_job 此行在 day 更新为自己的每月几号        
 2、python client-linux.py 运行即可。      
 
 二、client-psutil版配置:                
@@ -128,6 +135,7 @@ pip install psutil
 # 相关开源项目，感谢： 
 
 * ServerStatus：https://github.com/BotoX/ServerStatus
+* ServerStatus中文版: https://github.com/cppla/ServerStatus
 * mojeda: https://github.com/mojeda 
 * mojeda's ServerStatus: https://github.com/mojeda/ServerStatus
 * BlueVM's project: http://www.lowendtalk.com/discussion/comment/169690#Comment_169690
