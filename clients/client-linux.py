@@ -9,6 +9,10 @@
 SERVER = "127.0.0.1"
 USER = "s01"
 
+NET_IN = 0
+NET_OUT = 0
+OLDNET_IN = 0
+OLDNET_OUT = 0
 
 PORT = 35601
 PASSWORD = "USER_DEFAULT_PASSWORD"
@@ -18,6 +22,7 @@ CU = "cu.tz.cloudcpp.com"
 CT = "ct.tz.cloudcpp.com"
 CM = "cm.tz.cloudcpp.com"
 
+from apscheduler.schedulers.background import BackgroundScheduler
 import socket
 import time
 import timeit
@@ -118,9 +123,10 @@ class Traffic:
 
         return avgrx, avgtx
 
-def liuliang():
-    NET_IN = 0
-    NET_OUT = 0
+def old_datausage():
+    global NET_IN,NET_OUT,OLDNET_IN,OLDNET_OUT
+    netin  = 0
+    netout = 0
     with open('/proc/net/dev') as f:
         for line in f.readlines():
             netinfo = re.findall('([^\s]+):[\s]{0,}(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)', line)
@@ -132,8 +138,39 @@ def liuliang():
                         or netinfo[0][1]=='0' or netinfo[0][9]=='0':
                     continue
                 else:
-                    NET_IN += int(netinfo[0][1])
-                    NET_OUT += int(netinfo[0][9])
+                    netin  += int(netinfo[0][1])
+                    netout += int(netinfo[0][9])
+    OLDNET_IN  = netin
+    OLDNET_OUT = netout
+    #print 0
+    #print OLDNET_IN
+    #print OLDNET_OUT
+    return OLDNET_IN, OLDNET_OUT
+
+def cur_datausage():
+    global NET_IN,NET_OUT,OLDNET_IN,OLDNET_OUT
+    netin  = 0
+    netout = 0
+    with open('/proc/net/dev') as f:
+        for line in f.readlines():
+            netinfo = re.findall('([^\s]+):[\s]{0,}(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)', line)
+            if netinfo:
+                if netinfo[0][0] == 'lo' or 'tun' in netinfo[0][0] \
+                        or 'docker' in netinfo[0][0] or 'veth' in netinfo[0][0] \
+                        or 'br-' in netinfo[0][0] or 'vmbr' in netinfo[0][0] \
+                        or 'vnet' in netinfo[0][0] or 'kube' in netinfo[0][0] \
+                        or netinfo[0][1]=='0' or netinfo[0][9]=='0':
+                    continue
+                else:
+                    netin  += int(netinfo[0][1])
+                    netout += int(netinfo[0][9])
+                    #NET_IN  = int(netinfo[0][1]) + NET_IN - OLDNET_IN
+                    #NET_OUT = int(netinfo[0][9]) + NET_OUT - OLDNET_OUT
+    NET_IN  = netin - OLDNET_IN
+    NET_OUT = netout - OLDNET_OUT
+    #print 1
+    #print NET_IN
+    #print NET_OUT
     return NET_IN, NET_OUT
 
 def tupd():
@@ -263,6 +300,10 @@ def byte_str(object):
     else:
         print(type(object))
 
+sched = BackgroundScheduler()
+sched.add_job(old_datausage, 'cron', day='6', hour='0', minute='0', second='0')
+sched.start()
+
 if __name__ == '__main__':
     for argc in sys.argv:
         if 'SERVER' in argc:
@@ -277,6 +318,7 @@ if __name__ == '__main__':
             INTERVAL = int(argc.split('INTERVAL=')[-1])
     socket.setdefaulttimeout(30)
     get_packetLostRate()
+
     while 1:
         try:
             print("Connecting...")
@@ -312,7 +354,7 @@ if __name__ == '__main__':
             while 1:
                 CPU = get_cpu()
                 NetRx, NetTx = traffic.get()
-                NET_IN, NET_OUT = liuliang()
+                NET_IN, NET_OUT = cur_datausage()
                 Uptime = get_uptime()
                 Load_1, Load_5, Load_15 = os.getloadavg()
                 MemoryTotal, MemoryUsed, SwapTotal, SwapFree = get_memory()
@@ -351,6 +393,7 @@ if __name__ == '__main__':
                 array['tcp'], array['udp'], array['process'], array['thread'] = tupd()
 
                 s.send(byte_str("update " + json.dumps(array) + "\n"))
+
         except KeyboardInterrupt:
             raise
         except socket.error:
